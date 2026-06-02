@@ -6,7 +6,7 @@ import pandas as pd
 from huggingface_hub import HfApi
 import config
 import data_manager as dm
-from graph_laplacian import graph_laplacian_score, generate_labels_from_future
+from graph_laplacian import graph_laplacian_score
 
 def normalize_scores(score_dict):
     scores = np.array(list(score_dict.values()))
@@ -20,10 +20,15 @@ def run_for_window(returns, window_days):
     if len(returns) < window_days:
         return None
     ret_window = returns.iloc[-window_days:]
-    # generate labels from the last day's return (self-supervised)
-    labels = generate_labels_from_future(returns, window_days)
-    if labels is None:
-        return None
+    # Generate labels from the last day of the window only
+    last_return = ret_window.iloc[-1].values
+    labels = np.zeros(len(last_return))
+    labels[last_return > 0] = 1
+    labels[last_return < 0] = -1
+    # If all labels are zero (all returns = 0), set some positive for diversity
+    if np.all(labels == 0):
+        labels[:len(labels)//2] = 1
+        labels[len(labels)//2:] = -1
     probs = graph_laplacian_score(ret_window, labels, alpha=config.ALPHA, n_neighbors=config.KNN_NEIGHBORS)
     raw_scores = {ticker: float(probs[i]) for i, ticker in enumerate(returns.columns)}
     norm_scores = normalize_scores(raw_scores)

@@ -1,43 +1,37 @@
 import numpy as np
-from scipy.sparse import csr_matrix, identity
-from scipy.sparse.linalg import spsolve
-from scipy.sparse.csgraph import laplacian
 
-def label_propagation(returns, labels, alpha=0.2, n_neighbors=5):
+def label_propagation(returns, labels, alpha=0.2, n_neighbors=5, max_iter=100):
+    """
+    Iterative label propagation: f = (1-alpha)*y + alpha * (D^{-1} A f)
+    """
     n = returns.shape[1]
-    # correlation distance
+    # Build graph from correlation distance
     corr = returns.corr().values
     dist = 1 - np.abs(corr)
     np.fill_diagonal(dist, 0)
-    # Build k-NN graph
+    # Build k-NN graph (symmetric)
     adj = np.zeros((n, n))
-    # Ensure at least 2 neighbors to avoid disconnected graph
-    k = min(n_neighbors, n-1)
     for i in range(n):
-        nearest = np.argsort(dist[i])[1:k+1]
+        nearest = np.argsort(dist[i])[1:n_neighbors+1]
         adj[i, nearest] = 1
     adj = np.maximum(adj, adj.T)
-    # Convert to sparse
-    adj_sparse = csr_matrix(adj)
-    # Compute Laplacian
-    L = laplacian(adj_sparse, normed=False)
-    # Regularise: I + alpha L
-    I = identity(n, format='csr')
-    A = I + alpha * L
-    A = A.tocsc()
+    # Degree matrix
+    D = np.sum(adj, axis=1, keepdims=True)
+    D_inv = 1.0 / (D + 1e-12)
+    # Normalized adjacency: P = D^{-1} A
+    P = adj * D_inv
+    # Initial scores: y (positive=1, negative=-1, zero otherwise)
     y = np.zeros(n)
     y[labels == 1] = 1.0
     y[labels == -1] = -1.0
-    try:
-        f = spsolve(A, y)
-    except Exception as e:
-        # Fallback: solve dense (for small n)
-        print(f"Warning: spsolve failed ({e}), falling back to dense solve")
-        A_dense = A.toarray()
-        try:
-            f = np.linalg.solve(A_dense + 1e-8 * np.eye(n), y)
-        except:
-            f = np.zeros(n)
+    # Iterative propagation
+    f = y.copy()
+    for _ in range(max_iter):
+        f_new = (1 - alpha) * y + alpha * (P @ f)
+        if np.allclose(f, f_new, atol=1e-8):
+            break
+        f = f_new
+    # Convert to probability: (f + 1)/2
     prob = (f + 1) / 2
     prob = np.clip(prob, 0, 1)
     return prob

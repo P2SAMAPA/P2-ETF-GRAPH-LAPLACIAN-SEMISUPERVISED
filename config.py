@@ -20,6 +20,6 @@ UNIVERSES = {
 }
 
 # Graph parameters
-KNN_NEIGHBORS = 5           # number of nearest neighbours for graph construction
+KNN_NEIGHBORS = 3           # number of nearest neighbours for graph construction
 ALPHA = 0.2                 # label propagation smoothing (0 = keep initial labels, 1 = only graph)
 TOP_N = 3

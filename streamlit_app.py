@@ -121,6 +121,10 @@ with tab1:
         - High score → ETF is central to the group of recently positive ETFs → momentum continuation.
         """)
     for universe_name, uni_data in data["universes"].items():
+        # Skip FI_COMMODITIES if it has all zero scores (you can also keep it, but it will show zeros)
+        # To completely hide it, uncomment the next line:
+        if universe_name == "FI_COMMODITIES":
+            continue
         if not uni_data or not uni_data.get("all_windows"):
             st.warning(f"No window data for {universe_name}")
             continue
@@ -139,6 +143,9 @@ with tab2:
     st.header("🔍 Manual Window Selection")
     st.markdown("Choose a rolling window to inspect the label propagation probabilities.")
     for universe_name, uni_data in data["universes"].items():
+        # Skip FI_COMMODITIES
+        if universe_name == "FI_COMMODITIES":
+            continue
         if not uni_data or not uni_data.get("all_windows"):
             st.warning(f"No window data for {universe_name}")
             continue

@@ -2,7 +2,7 @@ name: Daily Graph Laplacian Training
 
 on:
   schedule:
-    - cron: '40 01 * * *'
+    - cron: '40 03 * * *'
   workflow_dispatch:
 
 jobs:
